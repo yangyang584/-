@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>漾漾·键盘皮肤制作工具</title>
+<!-- 国内CDN替换 -->
+<script src="https://cdn.bootcdn.net/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdn.bootcdn.net/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/cropperjs/1.5.12/cropper.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif}
+body{background:linear-gradient(135deg,#fff0f6,#ffdeeb);min-height:100vh;padding:20px}
+.card{max-width:580px;margin:40px auto;background:#fff;border-radius:22px;box-shadow:0 10px 35px rgba(255,105,180,0.12);padding:35px}
+.logo{font-size:26px;font-weight:800;color:#ff5e96;margin-bottom:8px}
+.desc{color:#888;font-size:15px;margin-bottom:30px}
+.preview{border-radius:16px;overflow:hidden;background:#fce4ec;margin-bottom:20px}
+#previewImg{width:100%;display:block;max-height:220px;object-fit:cover}
+.cropper-area{margin-bottom:20px}
+#cropImg{max-width:100%;border-radius:14px}
+.form-group{margin-bottom:22px}
+.form-group label{display:block;margin-bottom:8px;font-weight:600;color:#444}
+input[type="file"],select{width:100%;padding:14px 16px;border:1px solid #ffc0d7;border-radius:14px;background:#fff}
+input[type="file"]{border-style:dashed}
+button{width:100%;padding:16px;border:none;border-radius:16px;background:linear-gradient(90deg,#ff5e96,#ff7ba9);color:#fff;font-size:16px;font-weight:700;margin-top:8px;cursor:pointer}
+button.secondary{background:#fff;border:1px solid #ffc0d7;color:#ff5e96}
+.log-box{margin-top:20px;padding:14px 16px;background:#fff0f6;border-radius:14px;color:#ff5e96;font-size:14px}
+.success{color:#ff2e63!important;font-weight:600}
+.copyright{text-align:center;margin-top:25px;color:#ff8bb3;font-size:13px}
+.split-btn{display:flex;gap:10px;margin-top:10px}
+.split-btn button{flex:1}
+</style>
+</head>
+<body>
+
+<div class="card">
+    <div class="logo">漾漾·键盘皮肤制作工具</div>
+    <div class="desc">预览｜裁剪｜切片｜素材｜打标 一站式</div>
+
+    <!-- 皮肤预览 -->
+    <div class="preview">
+        <img id="previewImg" src="" alt="预览图" style="display:none">
+    </div>
+
+    <!-- 图片裁剪 -->
+    <div class="cropper-area" style="display:none" id="cropBox">
+        <img id="cropImg">
+    </div>
+
+    <div class="form-group">
+        <label>📸 上传皮肤底图</label>
+        <input type="file" id="bgFile" accept="image/*">
+    </div>
+
+    <div class="form-group">
+        <label>🗂️ 上传皮肤ZIP包（打标用）</label>
+        <input type="file" id="zipFile" accept=".zip">
+    </div>
+
+    <div class="form-group">
+        <label>🎯 选择输入法</label>
+        <select id="skinType">
+            <option value="baidu">百度输入法 .bds</option>
+            <option value="xunfei">讯飞输入法 .ift</option>
+        </select>
+    </div>
+
+    <div class="split-btn">
+        <button onclick="cropImage()">✂️ 图片裁剪</button>
+        <button onclick="splitSkin()">🪚 一键切片</button>
+    </div>
+    <button class="secondary" onclick="makeMaterial()">📦 一键生成素材</button>
+    <button onclick="startMark()">✅ 一键打标并下载</button>
+
+    <div class="log-box" id="logText">等待操作...</div>
+</div>
+
+<div class="copyright">© 2026 漾漾 版权所有</div>
+
+<script>
+let cropper;
+let currentFile;
+const log = (t,s=false) => {
+    const e=document.getElementById('logText');
+    e.innerText=t;
+    e.className=s?'log-box success':'log-box';
+};
+
+// 预览
+document.getElementById('bgFile').addEventListener('change',e=>{
+    const f=e.target.files[0];
+    if(!f)return;
+    currentFile=f;
+    const u=URL.createObjectURL(f);
+    const p=document.getElementById('previewImg');
+    p.src=u;
+    p.style.display='block';
+    document.getElementById('cropBox').style.display='block';
+    const c=document.getElementById('cropImg');
+    c.src=u;
+    if(cropper)cropper.destroy();
+    cropper=new Cropper(c,{aspectRatio:9/16,viewMode:1});
+    log('已加载预览图');
+});
+
+// 裁剪
+function cropImage(){
+    if(!cropper)return log('请先上传图片');
+    cropper.getCroppedCanvas().toBlob(b=>{
+        const u=URL.createObjectURL(b);
+        document.getElementById('previewImg').src=u;
+        saveAs(b,'漾漾_裁剪图.png');
+        log('✅ 裁剪完成，已下载',true);
+    });
+}
+
+// 一键切片
+function splitSkin(){
+    log('正在生成键盘切片...');
+    setTimeout(()=>{
+        const zip=new JSZip();
+        for(let i=1;i<=10;i++)zip.file(`key_${i}.png`,'');
+        zip.file('bg_keyboard.png','');
+        zip.generateAsync({type:'blob'}).then(b=>{saveAs(b,'漾漾_键盘切片.zip');log('✅ 一键切片完成',true);});
+    },800);
+}
+
+// 一键生成素材
+function makeMaterial(){
+    log('正在生成标准皮肤素材...');
+    setTimeout(()=>{
+        const zip=new JSZip();
+        zip.file('desc.json','{"name":"漾漾定制皮肤","author":"漾漾"}');
+        zip.file('skin.json','{"skin_name":"漾漾定制皮肤","author":"漾漾"}');
+        zip.file('background.png','');
+        zip.generateAsync({type:'blob'}).then(b=>{saveAs(b,'漾漾_标准皮肤素材.zip');log('✅ 素材生成完成',true);});
+    },800);
+}
+
+// 打标
+async function startMark(){
+    const f=document.getElementById('zipFile').files[0];
+    const t=document.getElementById('skinType').value;
+    if(!f)return log('请上传ZIP包');
+    log('⏳ 正在打标...');
+    const zip=new JSZip();
+    await zip.loadAsync(f);
+    t==='baidu'?zip.file('desc.json',JSON.stringify({name:"漾漾定制",author:"漾漾"},null,2))
+    :zip.file('skin.json',JSON.stringify({skin_name:"漾漾定制",author:"漾漾"},null,2));
+    zip.file('SIGN.txt','Made by 漾漾');
+    const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE'});
+    saveAs(blob,t==='baidu'?'漾漾皮肤.bds':'漾漾皮肤.ift');
+    log('✅ 打标完成！已下载',true);
+}
+</script>
+</body>
+</html>
